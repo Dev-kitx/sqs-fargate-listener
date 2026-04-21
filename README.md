@@ -1,10 +1,11 @@
 # 🦾 sqs-fargate-listener
 
+[![Release](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FDev-kitx%2Fsqs-fargate-listener%2Fmain%2F.github%2Fbadges%2Frelease.json)](https://github.com/Dev-kitx/sqs-fargate-listener/releases/latest)
 [![PyPI version](https://img.shields.io/pypi/v/sqs-fargate-listener?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/sqs-fargate-listener/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/sqs-fargate-listener?color=brightgreen)](https://pypi.org/project/sqs-fargate-listener/)
 [![CI](https://img.shields.io/github/actions/workflow/status/Dev-Kitx/sqs-fargate-listener/ci.yml?branch=master&label=CI&logo=github)](https://github.com/Dev-Kitx/sqs-fargate-listener/actions)
-[![codecov](https://codecov.io/gh/Dev-kitx/sqs-listener/graph/badge.svg?token=qv6il3a3vg)](https://codecov.io/gh/Dev-kitx/sqs-listener)
+[![codecov](https://codecov.io/gh/Dev-kitx/sqs-fargate-listener/graph/badge.svg?token=qv6il3a3vg)](https://codecov.io/gh/Dev-kitx/sqs-fargate-listener)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-orange?logo=ruff)](https://github.com/astral-sh/ruff)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -362,11 +363,11 @@ aws sqs set-queue-attributes \
 
 ### Choosing `maxReceiveCount`
 
-| Workload | Recommended value | Reasoning |
-|---|---|---|
-| Idempotent, fast processing | 3 | Fail fast, avoid long retry cycles |
-| External API calls (flaky) | 5–10 | Allow for transient failures |
-| Critical, must-process messages | 10+ | Exhaust retries before giving up |
+| Workload                        | Recommended value | Reasoning                          |
+|---------------------------------|-------------------|------------------------------------|
+| Idempotent, fast processing     | 3                 | Fail fast, avoid long retry cycles |
+| External API calls (flaky)      | 5–10              | Allow for transient failures       |
+| Critical, must-process messages | 10+               | Exhaust retries before giving up   |
 
 > [!NOTE]
 > `maxReceiveCount` counts how many times SQS delivers a message. If your `visibility_secs` expires before your handler finishes, the receive count increments — set `visibility_secs` and `max_extend` high enough for your workload.
@@ -501,11 +502,11 @@ aws cloudwatch put-metric-alarm \
 
 Three output modes controlled entirely by env vars:
 
-| Mode | When | Best for |
-|------|------|----------|
-| **JSON** | `LOG_JSON=1` | CloudWatch, Datadog, Splunk — one JSON object per line |
-| **Color** | TTY detected + `LOG_USE_COLOR=1` | Local development |
-| **Plain** | Non-TTY, no JSON | Simple text output |
+| Mode      | When                             | Best for                                               |
+|-----------|----------------------------------|--------------------------------------------------------|
+| **JSON**  | `LOG_JSON=1`                     | CloudWatch, Datadog, Splunk — one JSON object per line |
+| **Color** | TTY detected + `LOG_USE_COLOR=1` | Local development                                      |
+| **Plain** | Non-TTY, no JSON                 | Simple text output                                     |
 
 ### Environment variables
 
