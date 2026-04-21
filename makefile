@@ -19,17 +19,34 @@ QUEUE_URL_IN_CONTAINER := http://$(QUEUE_HOST):$(QUEUE_PORT)/$(ACCOUNT)/$(QUEUE_
 # URL used by your host for CLI (path-style)
 QUEUE_URL_ON_HOST := $(ENDPOINT)/$(ACCOUNT)/$(QUEUE_NAME)
 
+venv:
+	@echo "🐍 Creating virtual environment..."
+	python -m venv .venv
+	.venv/bin/pip install --upgrade pip
+	.venv/bin/pip install -e ".[dev]"
+	@echo "✅ Done. Activate with: source .venv/bin/activate"
+
 setup-env:
 	@echo "🧪 Setting up env..."
 	python -m pip install --upgrade pip
-	pip install pipenv
-	pipenv install --dev
+	pip install -e ".[dev]"
 	@echo "✅ Setup completed."
 
 run-pytest:
 	@echo "🧪 Running unit tests..."
-	pipenv run pytest --cov-report xml:coverage.xml --cov=. --cov-report=term-missing tests
+	pytest
 	@echo "✅ Unit tests completed."
+
+lint:
+	@echo "🔍 Linting..."
+	ruff check src/ tests/
+	ruff format --check src/ tests/
+	@echo "✅ Lint passed."
+
+typecheck:
+	@echo "🔍 Type checking..."
+	mypy src/
+	@echo "✅ Type check passed."
 
 # --- Targets ---
 

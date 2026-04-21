@@ -1,0 +1,15 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 2%
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+
+ignore:
+  - "src/sqs_fargate_listener/__init__.py"
+  - "src/sqs_fargate_listener/testing.py"
+  - "app.py"

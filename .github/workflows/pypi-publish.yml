@@ -1,0 +1,114 @@
+name: Publish to PyPI
+
+# Triggered automatically when a GitHub Release is published.
+# The release tag (e.g. "1.2.3") becomes the package version via setuptools-scm.
+#
+# ROLLBACK / REVERT STRATEGY
+# ───────────────────────────
+# PyPI does not allow re-uploading or deleting a released version.
+# The correct options are:
+#
+#   1. YANK  (preferred for bugs)
+#      Run the "Yank Release" workflow. Yank marks a version as bad so that
+#      `pip install staticnest` skips it, but pinned installs still resolve it.
+#      Users see a deprecation warning. Reversible — you can un-yank later.
+#
+#   2. PATCH RELEASE  (preferred for critical fixes)
+#      Fix the bug, cut a new patch release (e.g. 1.2.1), and publish that.
+#      Optionally also yank the bad version.
+#
+# SETUP REQUIRED (one-time)
+# ──────────────────────────
+# This workflow uses PyPI Trusted Publishing (OIDC) — no API tokens needed.
+# Configure it at https://pypi.org/manage/account/publishing/ by adding:
+#   publisher: GitHub Actions
+#   owner:      <your-github-username>
+#   repository: <repo-name>
+#   workflow:   pypi-publish.yml
+#   environment: pypi
+
+on:
+  release:
+    types: [published]
+
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Publish target"
+        required: true
+        default: pypi
+        type: choice
+        options: [pypi]
+
+jobs:
+  # ── 1. Run the full test suite before we ever touch PyPI ──────────────────
+  test:
+    name: Tests (pre-publish gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # needed for setuptools-scm to read the tag
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install & test
+        run: |
+          make setup-env && make run-pytest
+
+  # ── 2. Build the distribution artefacts ───────────────────────────────────
+  build:
+    name: Build distribution 📦
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Build sdist and wheel
+        run: |
+          pip install build
+          pyproject-build
+
+      - name: Inspect built artefacts
+        run: ls -lh dist/
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  # ── 3. Publish to PyPI ────────────────────────────────────────────────────
+  publish-pypi:
+    name: Publish → PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'release' ||
+      github.event_name == 'workflow_dispatch'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sqs-fargate-listener
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

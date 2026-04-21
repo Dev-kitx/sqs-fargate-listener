@@ -1,4 +1,0 @@
-[run]
-omit =
-    app.py
-    */__init__.py
