@@ -99,4 +99,4 @@ jobs:
       uses: github/codeql-action/analyze@v4
       with:
         category: "/language:${{matrix.language}}"
-        source-root: ${{ github.workspace }} 
+        checkout_path: ${{ github.workspace }}
