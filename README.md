@@ -1,11 +1,10 @@
 # 🦾 sqs-fargate-listener
 
 [![PyPI version](https://img.shields.io/pypi/v/sqs-fargate-listener?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/sqs-fargate-listener/)
-[![Python versions](https://img.shields.io/pypi/pyversions/sqs-fargate-listener?logo=python&logoColor=white)](https://pypi.org/project/sqs-fargate-listener/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/sqs-fargate-listener?color=brightgreen)](https://pypi.org/project/sqs-fargate-listener/)
-[![CI](https://img.shields.io/github/actions/workflow/status/pylearn-devops/sqs-fargate-listener/ci.yml?branch=master&label=CI&logo=github)](https://github.com/pylearn-devops/sqs-fargate-listener/actions)
-[![Coverage](https://img.shields.io/codecov/c/github/pylearn-devops/sqs-fargate-listener?logo=codecov)](https://codecov.io/gh/pylearn-devops/sqs-fargate-listener)
+[![CI](https://img.shields.io/github/actions/workflow/status/Dev-Kitx/sqs-fargate-listener/ci.yml?branch=master&label=CI&logo=github)](https://github.com/Dev-Kitx/sqs-fargate-listener/actions)
+[![codecov](https://codecov.io/gh/Dev-kitx/sqs-listener/graph/badge.svg?token=qv6il3a3vg)](https://codecov.io/gh/Dev-kitx/sqs-listener)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-orange?logo=ruff)](https://github.com/astral-sh/ruff)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -771,4 +770,4 @@ Contributions, bug reports, and feature requests are welcome! Please read the [C
 ## 🧾 License
 
 
-**MIT © 2025 AB**
+**MIT © 2026**
