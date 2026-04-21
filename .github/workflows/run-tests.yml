@@ -3,7 +3,6 @@ name: Run tests and report coverage
 on:
   push:
     branches:
-      - main
       - master
       - dev
       - develop
@@ -12,6 +11,8 @@ on:
     paths-ignore:
       - 'README.md'
       - 'codecov.yml'
+      - 'CHANGELOG.md'
+      - '.github/badges/**'
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
@@ -23,4 +24,4 @@ jobs:
     with:
       python-versions: '["3.11", "3.12", "3.13"]'
       coverage-python-version: "3.12"
-      codecov_slug: "Dev-Kitx/sqs-fargate-listener"
+      codecov_slug: "Dev-Kitx/sqs-listener"
