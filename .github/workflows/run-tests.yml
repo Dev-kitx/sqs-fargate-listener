@@ -29,4 +29,4 @@ jobs:
     with:
       python-versions: '["3.11", "3.12", "3.13"]'
       coverage-python-version: "3.12"
-      codecov_slug: "Dev-Kitx/sqs-listener"
+      codecov_slug: "Dev-Kitx/sqs-fargate-listener"
