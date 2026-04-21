@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 import asyncio
 import inspect
 import json
-from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from .types import BatchResult, SqsMessage
 
@@ -11,6 +13,7 @@ from .types import BatchResult, SqsMessage
 @dataclass
 class RunResult:
     """Result of running a handler against a FakeSQSQueue."""
+
     processed: int = 0
     failed: int = 0
     filtered: int = 0
@@ -43,24 +46,26 @@ class FakeSQSQueue:
 
     def __init__(self, queue_url: str = "http://localhost:4566/000000000000/test-queue"):
         self.queue_url = queue_url
-        self._messages: List[SqsMessage] = []
-        self._deleted: List[str] = []
+        self._messages: list[SqsMessage] = []
+        self._deleted: list[str] = []
         self._counter = 0
 
-    def send(self, body: Any, attributes: Optional[dict] = None) -> str:
+    def send(self, body: Any, attributes: dict | None = None) -> str:
         """Enqueue a message. body can be a dict (auto-serialized) or a raw string."""
         self._counter += 1
         mid = f"fake-msg-{self._counter}"
         rh = f"fake-rh-{self._counter}"
         if not isinstance(body, str):
             body = json.dumps(body)
-        self._messages.append(SqsMessage(
-            message_id=mid,
-            receipt_handle=rh,
-            body=body,
-            attributes={"ApproximateReceiveCount": "1"},
-            md={"MessageAttributes": attributes or {}},
-        ))
+        self._messages.append(
+            SqsMessage(
+                message_id=mid,
+                receipt_handle=rh,
+                body=body,
+                attributes={"ApproximateReceiveCount": "1"},
+                md={"MessageAttributes": attributes or {}},
+            )
+        )
         return mid
 
     @property
@@ -72,7 +77,7 @@ class FakeSQSQueue:
         return len(self._messages) - len(self._deleted)
 
     @property
-    def messages(self) -> List[SqsMessage]:
+    def messages(self) -> list[SqsMessage]:
         return list(self._messages)
 
     def reset(self) -> None:
@@ -84,7 +89,7 @@ class FakeSQSQueue:
         self,
         handler: Callable,
         mode: str = "batch",
-        filter_fn: Optional[Callable[[SqsMessage], bool]] = None,
+        filter_fn: Callable[[SqsMessage], bool] | None = None,
     ) -> RunResult:
         """
         Run handler against all queued messages and return a RunResult.

@@ -4,8 +4,9 @@
 # -------------------------------------------------------------------
 
 import pytest
-import src.sqs_fargate_listener.decorator as dec
+
 import src.sqs_fargate_listener.core as core
+import src.sqs_fargate_listener.decorator as dec
 
 Q = "http://localhost:4566/000000000000/q"
 
@@ -21,9 +22,11 @@ def clean_registry():
 # Decorator-level validation
 # ---------------------------
 
+
 @pytest.mark.parametrize("mode", ["BATCH", "per-message", "stream", ""])
 def test_invalid_mode_raises(mode):
     with pytest.raises(ValueError, match="mode must be one of"):
+
         @dec.sqs_listener(queue_url=Q, mode=mode)
         def h(_): ...
 
@@ -31,6 +34,7 @@ def test_invalid_mode_raises(mode):
 @pytest.mark.parametrize("batch_size", [0, -1, 11, 100])
 def test_invalid_batch_size_raises(batch_size):
     with pytest.raises(ValueError, match="batch_size"):
+
         @dec.sqs_listener(queue_url=Q, batch_size=batch_size)
         def h(_): ...
 
@@ -38,6 +42,7 @@ def test_invalid_batch_size_raises(batch_size):
 @pytest.mark.parametrize("wait_time", [-1, 21, 100])
 def test_invalid_wait_time_raises(wait_time):
     with pytest.raises(ValueError, match="wait_time"):
+
         @dec.sqs_listener(queue_url=Q, wait_time=wait_time)
         def h(_): ...
 
@@ -45,6 +50,7 @@ def test_invalid_wait_time_raises(wait_time):
 @pytest.mark.parametrize("val", [0, -1, -100])
 def test_invalid_visibility_secs_raises(val):
     with pytest.raises(ValueError, match="visibility_secs"):
+
         @dec.sqs_listener(queue_url=Q, visibility_secs=val)
         def h(_): ...
 
@@ -52,6 +58,7 @@ def test_invalid_visibility_secs_raises(val):
 @pytest.mark.parametrize("val", [0, -1])
 def test_invalid_max_extend_raises(val):
     with pytest.raises(ValueError, match="max_extend"):
+
         @dec.sqs_listener(queue_url=Q, max_extend=val)
         def h(_): ...
 
@@ -59,6 +66,7 @@ def test_invalid_max_extend_raises(val):
 @pytest.mark.parametrize("val", [0, -1])
 def test_invalid_worker_threads_raises(val):
     with pytest.raises(ValueError, match="worker_threads"):
+
         @dec.sqs_listener(queue_url=Q, worker_threads=val)
         def h(_): ...
 
@@ -67,6 +75,7 @@ def test_invalid_worker_threads_raises(val):
 def test_invalid_queue_url_format_raises(url, monkeypatch):
     monkeypatch.delenv("QUEUE_URL", raising=False)
     with pytest.raises(ValueError, match="queue_url"):
+
         @dec.sqs_listener(queue_url=url)
         def h(_): ...
 
@@ -108,6 +117,7 @@ def test_valid_boundary_values_accepted(monkeypatch):
 # ---------------------------
 # Engine-level validation
 # ---------------------------
+
 
 @pytest.mark.parametrize("url", ["not-a-url", "", "sqs://queue"])
 def test_engine_invalid_queue_url_raises(monkeypatch, url):

@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import json
 import threading
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 
 class HealthServer:
@@ -15,10 +17,10 @@ class HealthServer:
         GET /metrics → 200 {stats dict}
     """
 
-    def __init__(self, port: int, get_stats: Callable[[], Dict[str, Any]]):
+    def __init__(self, port: int, get_stats: Callable[[], dict[str, Any]]):
         self._port = port
         self._get_stats = get_stats
-        self._server: Optional[HTTPServer] = None
+        self._server: HTTPServer | None = None
 
     def start(self) -> None:
         get_stats = self._get_stats

@@ -1,7 +1,9 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Callable, Optional, Dict, Any, List
+
 import os
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from .core import SqsListenerEngine
 from .logging_setup import get_logger
@@ -14,24 +16,24 @@ class _ListenerSpec:
     queue_url: str
     handler: Callable
     mode: str
-    opts: Dict[str, Any]
+    opts: dict[str, Any]
 
 
 _REGISTRY: list[_ListenerSpec] = []
 _VALID_MODES = {"batch", "per_message"}
 
 
-def _validate_positive_int(name: str, value: Optional[int]) -> None:
+def _validate_positive_int(name: str, value: int | None) -> None:
     if value is not None and value < 1:
         raise ValueError(f"{name} must be >= 1, got {value}")
 
 
-def _validate_batch_size(value: Optional[int]) -> None:
+def _validate_batch_size(value: int | None) -> None:
     if value is not None and not (1 <= value <= 10):
         raise ValueError(f"batch_size must be between 1 and 10, got {value}")
 
 
-def _validate_wait_time(value: Optional[int]) -> None:
+def _validate_wait_time(value: int | None) -> None:
     if value is not None and not (0 <= value <= 20):
         raise ValueError(f"wait_time must be between 0 and 20, got {value}")
 
@@ -42,25 +44,25 @@ def _validate_queue_url(url: str) -> None:
 
 
 def sqs_listener(
-    queue_url: Optional[str] = None,
+    queue_url: str | None = None,
     *,
     mode: str = "batch",
-    wait_time: Optional[int] = None,
-    batch_size: Optional[int] = None,
-    visibility_secs: Optional[int] = None,
-    max_extend: Optional[int] = None,
-    worker_threads: Optional[int] = None,
+    wait_time: int | None = None,
+    batch_size: int | None = None,
+    visibility_secs: int | None = None,
+    max_extend: int | None = None,
+    worker_threads: int | None = None,
     # Filtering
-    filter_fn: Optional[Callable[[Any], bool]] = None,
+    filter_fn: Callable[[Any], bool] | None = None,
     # Retry backoff
     retry_backoff: bool = False,
     retry_backoff_base: int = 30,
     retry_backoff_max: int = 600,
     # Hooks
-    on_success: Optional[Callable] = None,
-    on_failure: Optional[Callable] = None,
+    on_success: Callable | None = None,
+    on_failure: Callable | None = None,
     # Health check
-    health_check_port: Optional[int] = None,
+    health_check_port: int | None = None,
     **extra_opts: Any,
 ):
     """
@@ -122,6 +124,7 @@ def sqs_listener(
         _REGISTRY.append(spec)
         _logger.info("Registered listener for queue=%s mode=%s handler=%s", q, mode, func.__name__)
         return func
+
     return _decorator
 
 
@@ -130,17 +133,16 @@ def run_listeners(block: bool = True):
     Instantiate and start all registered listeners. If block=True, join threads.
     """
     if not _REGISTRY:
-        raise RuntimeError("No listeners registered. Did you decorate a function with @sqs_listener?")
+        raise RuntimeError(
+            "No listeners registered. Did you decorate a function with @sqs_listener?"
+        )
 
     _logger.info("Starting %d SQS listener(s)…", len(_REGISTRY))
-    engines: List[SqsListenerEngine] = []
+    engines: list[SqsListenerEngine] = []
     for spec in _REGISTRY:
         # Drop None values except for boolean/int opts that are intentionally falsy
         _passthrough = {"retry_backoff", "retry_backoff_base", "retry_backoff_max"}
-        filtered_opts = {
-            k: v for k, v in spec.opts.items()
-            if v is not None or k in _passthrough
-        }
+        filtered_opts = {k: v for k, v in spec.opts.items() if v is not None or k in _passthrough}
         eng = SqsListenerEngine(
             queue_url=spec.queue_url,
             handler=spec.handler,

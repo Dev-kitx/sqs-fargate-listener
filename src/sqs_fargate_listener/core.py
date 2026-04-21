@@ -1,20 +1,23 @@
 from __future__ import annotations
+
 import asyncio
+import contextlib
 import inspect
 import os
-import time
 import random
-import threading
 import signal
+import threading
+import time
+from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
-from typing import Callable, Iterable, List, Optional, Dict, Any, Tuple
+from typing import Any
 
 import boto3
 from botocore.config import Config
 
 from .health import HealthServer
-from .types import SqsMessage, BatchResult
 from .logging_setup import get_logger
+from .types import BatchResult, SqsMessage
 
 logger = get_logger("sqs_fargate_listener.engine")
 
@@ -34,6 +37,7 @@ class VisibilityExtender(threading.Thread):
       - the global stop_event (SIGTERM drain) is set, or
       - the per-message msg_stop_event is set (handler finished).
     """
+
     def __init__(
         self,
         sqs,
@@ -56,15 +60,17 @@ class VisibilityExtender(threading.Thread):
 
     def run(self):
         interval = max(1, self.vis_secs // 2)
-        while not self.stop_event.is_set() and not self.msg_stop_event.is_set() and self.elapsed < self.max_extend:
+        while (
+            not self.stop_event.is_set()
+            and not self.msg_stop_event.is_set()
+            and self.elapsed < self.max_extend
+        ):
             self.msg_stop_event.wait(timeout=interval)
             if self.stop_event.is_set() or self.msg_stop_event.is_set():
                 break
             try:
                 self.sqs.change_message_visibility(
-                    QueueUrl=self.queue_url,
-                    ReceiptHandle=self.rh,
-                    VisibilityTimeout=self.vis_secs
+                    QueueUrl=self.queue_url, ReceiptHandle=self.rh, VisibilityTimeout=self.vis_secs
                 )
                 logger.debug("Extended visibility for RH=%s by %ds", self.rh[:12], self.vis_secs)
             except Exception as e:
@@ -94,23 +100,23 @@ class SqsListenerEngine:
         queue_url: str,
         handler: Callable,
         mode: str = "batch",
-        wait_time: Optional[int] = None,
-        batch_size: Optional[int] = None,
-        visibility_secs: Optional[int] = None,
-        max_extend: Optional[int] = None,
-        worker_threads: Optional[int] = None,
-        client_kwargs: Optional[Dict[str, Any]] = None,
+        wait_time: int | None = None,
+        batch_size: int | None = None,
+        visibility_secs: int | None = None,
+        max_extend: int | None = None,
+        worker_threads: int | None = None,
+        client_kwargs: dict[str, Any] | None = None,
         # Filtering
-        filter_fn: Optional[Callable[[SqsMessage], bool]] = None,
+        filter_fn: Callable[[SqsMessage], bool] | None = None,
         # Retry backoff
         retry_backoff: bool = False,
         retry_backoff_base: int = 30,
         retry_backoff_max: int = 600,
         # Hooks
-        on_success: Optional[Callable[[SqsMessage], None]] = None,
-        on_failure: Optional[Callable[[SqsMessage, Optional[Exception]], None]] = None,
+        on_success: Callable[[SqsMessage], None] | None = None,
+        on_failure: Callable[[SqsMessage, Exception | None], None] | None = None,
         # Health check
-        health_check_port: Optional[int] = None,
+        health_check_port: int | None = None,
     ):
         if not queue_url or not queue_url.startswith(("https://", "http://")):
             raise ValueError(f"queue_url must start with http:// or https://, got: {queue_url!r}")
@@ -134,17 +140,21 @@ class SqsListenerEngine:
             "sqs",
             config=Config(
                 retries={"max_attempts": 10, "mode": "adaptive"},
-                user_agent_extra="sqs-fargate-listener/1.1"
+                user_agent_extra="sqs-fargate-listener/1.1",
             ),
-            **(client_kwargs or {})
+            **(client_kwargs or {}),
         )
 
-        self.wait_time       = wait_time       if wait_time       is not None else _env_int("WAIT_TIME", 20)
-        self.batch_size      = batch_size      if batch_size      is not None else _env_int("BATCH_SIZE", 10)
-        self.visibility_secs = visibility_secs if visibility_secs is not None else _env_int("VISIBILITY_SECS", 60)
-        self.max_extend      = max_extend      if max_extend      is not None else _env_int("MAX_EXTEND", 900)
-        self.worker_threads  = worker_threads  if worker_threads  is not None else _env_int("WORKER_THREADS", 4)
-        self.idle_sleep_max  = _env_float("IDLE_SLEEP_MAX", 2.0)
+        self.wait_time = wait_time if wait_time is not None else _env_int("WAIT_TIME", 20)
+        self.batch_size = batch_size if batch_size is not None else _env_int("BATCH_SIZE", 10)
+        self.visibility_secs = (
+            visibility_secs if visibility_secs is not None else _env_int("VISIBILITY_SECS", 60)
+        )
+        self.max_extend = max_extend if max_extend is not None else _env_int("MAX_EXTEND", 900)
+        self.worker_threads = (
+            worker_threads if worker_threads is not None else _env_int("WORKER_THREADS", 4)
+        )
+        self.idle_sleep_max = _env_float("IDLE_SLEEP_MAX", 2.0)
 
         if not (0 <= self.wait_time <= 20):
             raise ValueError(f"wait_time must be 0–20, got {self.wait_time}")
@@ -157,7 +167,7 @@ class SqsListenerEngine:
         if self.worker_threads < 1:
             raise ValueError(f"worker_threads must be >= 1, got {self.worker_threads}")
 
-        self._stats: Dict[str, Any] = {
+        self._stats: dict[str, Any] = {
             "messages_processed": 0,
             "messages_failed": 0,
             "messages_filtered": 0,
@@ -165,12 +175,16 @@ class SqsListenerEngine:
         self._stats_lock = threading.Lock()
         self.stop_event = threading.Event()
         self._threads: list[threading.Thread] = []
-        self._health_server: Optional[HealthServer] = None
+        self._health_server: HealthServer | None = None
 
         logger.info(
             "Configured listener: mode=%s wait_time=%s batch_size=%s visibility=%ss threads=%s queue=%s",
-            self.mode, self.wait_time, self.batch_size, self.visibility_secs,
-            self.worker_threads, self.queue_url,
+            self.mode,
+            self.wait_time,
+            self.batch_size,
+            self.visibility_secs,
+            self.worker_threads,
+            self.queue_url,
         )
 
     def start(self):
@@ -199,7 +213,7 @@ class SqsListenerEngine:
         logger.info("Stop signal received; draining…")
         self.stop_event.set()
 
-    def _get_stats(self) -> Dict[str, Any]:
+    def _get_stats(self) -> dict[str, Any]:
         uptime = (datetime.now(timezone.utc) - self._started_at).total_seconds()
         with self._stats_lock:
             return {
@@ -215,7 +229,7 @@ class SqsListenerEngine:
             return asyncio.run(self.handler(*args))
         return self.handler(*args)
 
-    def _call_hook(self, hook: Optional[Callable], *args: Any) -> None:
+    def _call_hook(self, hook: Callable | None, *args: Any) -> None:
         if hook is None:
             return
         try:
@@ -225,9 +239,11 @@ class SqsListenerEngine:
 
     def _backoff_secs(self, msg: SqsMessage) -> int:
         receive_count = int(msg.attributes.get("ApproximateReceiveCount", 1))
-        return min(self.retry_backoff_base * (2 ** (receive_count - 1)), self.retry_backoff_max)
+        return int(
+            min(self.retry_backoff_base * (2 ** (receive_count - 1)), self.retry_backoff_max)
+        )
 
-    def _apply_backoff(self, failed_rhs: Iterable[str], msg_map: Dict[str, SqsMessage]) -> None:
+    def _apply_backoff(self, failed_rhs: Iterable[str], msg_map: dict[str, SqsMessage]) -> None:
         for rh in failed_rhs:
             msg = msg_map.get(rh)
             if not msg:
@@ -243,19 +259,17 @@ class SqsListenerEngine:
             except Exception as e:
                 logger.warning("[backoff] failed for RH=%s: %s", rh[:12], e)
 
-    def _reset_visibility(self, msgs: List[SqsMessage]) -> None:
+    def _reset_visibility(self, msgs: list[SqsMessage]) -> None:
         """Make filtered messages immediately visible for other consumers."""
         for m in msgs:
-            try:
+            with contextlib.suppress(Exception):
                 self.sqs.change_message_visibility(
                     QueueUrl=self.queue_url,
                     ReceiptHandle=m.receipt_handle,
                     VisibilityTimeout=0,
                 )
-            except Exception:
-                pass
 
-    def _recv(self) -> List[SqsMessage]:
+    def _recv(self) -> list[SqsMessage]:
         resp = self.sqs.receive_message(
             QueueUrl=self.queue_url,
             MaxNumberOfMessages=self.batch_size,
@@ -272,9 +286,10 @@ class SqsListenerEngine:
                 message_id=m["MessageId"],
                 receipt_handle=m["ReceiptHandle"],
                 body=m["Body"],
-                attributes=m.get("Attributes", {}),
-                md=m,
-            ) for m in msgs
+                attributes=dict(m.get("Attributes", {})),  # type: ignore[arg-type]
+                md=dict(m),  # type: ignore[arg-type]
+            )
+            for m in msgs
         ]
 
     def _delete_batch(self, receipt_handles: Iterable[str]) -> None:
@@ -283,7 +298,7 @@ class SqsListenerEngine:
             return
         total = 0
         for i in range(0, len(handles), 10):
-            chunk = handles[i:i+10]
+            chunk = handles[i : i + 10]
             try:
                 self.sqs.delete_message_batch(
                     QueueUrl=self.queue_url,
@@ -295,7 +310,7 @@ class SqsListenerEngine:
         if total:
             logger.info("Deleted %d message(s).", total)
 
-    def _stop_extenders(self, extenders: Dict[str, Tuple[threading.Event, Any]]) -> None:
+    def _stop_extenders(self, extenders: dict[str, tuple[threading.Event, Any]]) -> None:
         for msg_stop, _ in extenders.values():
             msg_stop.set()
         for _, t in extenders.values():
@@ -329,13 +344,17 @@ class SqsListenerEngine:
                     continue
 
                 # --- Visibility extenders ---
-                extenders: Dict[str, Tuple[threading.Event, VisibilityExtender]] = {}
+                extenders: dict[str, tuple[threading.Event, VisibilityExtender]] = {}
                 for m in batch:
                     msg_stop = threading.Event()
                     ext = VisibilityExtender(
-                        self.sqs, self.queue_url, m.receipt_handle,
-                        self.visibility_secs, self.max_extend,
-                        self.stop_event, msg_stop,
+                        self.sqs,
+                        self.queue_url,
+                        m.receipt_handle,
+                        self.visibility_secs,
+                        self.max_extend,
+                        self.stop_event,
+                        msg_stop,
                     )
                     ext.start()
                     extenders[m.receipt_handle] = (msg_stop, ext)
@@ -349,13 +368,15 @@ class SqsListenerEngine:
                             if not isinstance(result, BatchResult):
                                 raise TypeError("Batch handler must return BatchResult")
                         except Exception as e:
-                            logger.error("[handler] batch error: %s", e, exc_info=True,
-                                         extra={"message_ids": [m.message_id for m in batch]})
+                            logger.error(
+                                "[handler] batch error: %s",
+                                e,
+                                exc_info=True,
+                                extra={"message_ids": [m.message_id for m in batch]},
+                            )
                             self._stop_extenders(extenders)
                             if self.retry_backoff:
-                                self._apply_backoff(
-                                    [m.receipt_handle for m in batch], msg_map
-                                )
+                                self._apply_backoff([m.receipt_handle for m in batch], msg_map)
                             for m in batch:
                                 self._call_hook(self.on_failure, m, e)
                             with self._stats_lock:
@@ -368,8 +389,11 @@ class SqsListenerEngine:
                         self._stop_extenders(extenders)
 
                         if failed:
-                            logger.warning("Batch processed with failures: ok=%d failed=%d",
-                                           len(ok_rhs), len(failed))
+                            logger.warning(
+                                "Batch processed with failures: ok=%d failed=%d",
+                                len(ok_rhs),
+                                len(failed),
+                            )
                             if self.retry_backoff:
                                 self._apply_backoff(failed, msg_map)
                             for rh in failed:
@@ -390,14 +414,18 @@ class SqsListenerEngine:
                         ok_rhs: list[str] = []
                         failed_count = 0
                         for m in batch:
-                            exc: Optional[Exception] = None
+                            exc: Exception | None = None
                             try:
                                 success = bool(self._invoke(m))
                             except Exception as e:
                                 exc = e
                                 success = False
-                                logger.error("[handler] error: %s", e, exc_info=True,
-                                             extra={"message_id": m.message_id})
+                                logger.error(
+                                    "[handler] error: %s",
+                                    e,
+                                    exc_info=True,
+                                    extra={"message_id": m.message_id},
+                                )
 
                             if success:
                                 ok_rhs.append(m.receipt_handle)
@@ -414,7 +442,9 @@ class SqsListenerEngine:
                             self._stats["messages_processed"] += len(ok_rhs)
                             self._stats["messages_failed"] += failed_count
 
-                        logger.info("Per-message processed: ok=%d failed=%d", len(ok_rhs), failed_count)
+                        logger.info(
+                            "Per-message processed: ok=%d failed=%d", len(ok_rhs), failed_count
+                        )
                         self._delete_batch(ok_rhs)
 
                 finally:

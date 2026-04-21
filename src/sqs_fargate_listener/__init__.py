@@ -1,8 +1,8 @@
 from importlib.metadata import PackageNotFoundError, version
 
-from .decorator import sqs_listener, run_listeners
-from .types import SqsMessage, BatchResult
+from .decorator import run_listeners, sqs_listener
 from .testing import FakeSQSQueue, RunResult
+from .types import BatchResult, SqsMessage
 
 try:
     __version__ = version("sqs-fargate-listener")

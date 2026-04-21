@@ -1,16 +1,18 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+
 import json
+from dataclasses import dataclass
 from functools import cached_property
+from typing import Any
+
 
 @dataclass
 class SqsMessage:
     message_id: str
     receipt_handle: str
     body: str
-    attributes: Dict[str, Any]
-    md: Dict[str, Any]  # raw boto fields (includes MessageAttributes when requested)
+    attributes: dict[str, Any]
+    md: dict[str, Any]  # raw boto fields (includes MessageAttributes when requested)
 
     @cached_property
     def json(self) -> Any:
@@ -21,7 +23,7 @@ class SqsMessage:
         """
         return json.loads(self.body)
 
-    def try_json(self) -> Tuple[Optional[Any], Optional[Exception]]:
+    def try_json(self) -> tuple[Any | None, Exception | None]:
         """
         Safe JSON parse. Returns (data, error). Never raises.
         Usage:
@@ -32,13 +34,13 @@ class SqsMessage:
         except Exception as e:
             return None, e
 
-    def message_attributes(self) -> Dict[str, Any]:
+    def message_attributes(self) -> dict[str, Any]:
         """
         Return simplified MessageAttributes (str/number/binary string values).
         Assumes ReceiveMessage included MessageAttributeNames=["All"].
         """
         raw = self.md.get("MessageAttributes") or {}
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
         for k, v in raw.items():
             # SQS can have StringValue, BinaryValue, or StringListValue/NumberListValue (rare)
             if "StringValue" in v:
@@ -54,4 +56,4 @@ class SqsMessage:
 
 @dataclass
 class BatchResult:
-    failed_receipt_handles: List[str]
+    failed_receipt_handles: list[str]

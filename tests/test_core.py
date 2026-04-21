@@ -11,10 +11,8 @@
 import threading
 import time
 
-import pytest
-
 import src.sqs_fargate_listener.core as core
-from src.sqs_fargate_listener.types import SqsMessage, BatchResult
+from src.sqs_fargate_listener.types import BatchResult, SqsMessage
 
 Q = "http://localhost:4566/000000000000/test-queue"
 Q1 = "http://localhost:4566/000000000000/q1"
@@ -24,6 +22,7 @@ Q2 = "http://localhost:4566/000000000000/q2"
 # =========================
 # Helpers & Test Doubles
 # =========================
+
 
 def make_raw_message(
     mid="m1",
@@ -46,6 +45,7 @@ class FakeSQS:
     Minimal fake SQS client to drive the engine without AWS.
     batches: list of lists; each inner list is the raw 'Messages' for that poll.
     """
+
     def __init__(self, batches=None):
         self.batches = list(batches or [])
         self.delete_calls = []
@@ -68,7 +68,9 @@ class FakeSQS:
 
 
 class FakeVisibilityExt(threading.Thread):
-    def __init__(self, sqs, queue_url, receipt_handle, vis_secs, max_extend, stop_event, msg_stop_event):
+    def __init__(
+        self, sqs, queue_url, receipt_handle, vis_secs, max_extend, stop_event, msg_stop_event
+    ):
         super().__init__(daemon=True)
         self.sqs = sqs
         self.queue_url = queue_url
@@ -93,6 +95,7 @@ class FakeVisibilityExt(threading.Thread):
 # Tests: env helpers
 # =========================
 
+
 def test_env_helpers(monkeypatch):
     monkeypatch.setenv("WAIT_TIME", "15")
     monkeypatch.setenv("IDLE_SLEEP_MAX", "1.25")
@@ -106,6 +109,7 @@ def test_env_helpers(monkeypatch):
 # =========================
 # Tests: VisibilityExtender
 # =========================
+
 
 def test_visibility_extender_exits_immediately_if_msg_already_stopped():
     fake_sqs = FakeSQS()
@@ -195,6 +199,7 @@ def test_visibility_extender_handles_sqs_exception_gracefully():
 # Tests: Engine basics
 # =========================
 
+
 def test_engine_start_spawns_threads_and_sets_handlers(monkeypatch):
     monkeypatch.setattr(core.signal, "signal", lambda *a, **k: None)
     fake_sqs = FakeSQS()
@@ -277,6 +282,7 @@ def test__delete_batch_handles_sqs_error_gracefully(monkeypatch):
 # Tests: Engine _loop logic
 # =========================
 
+
 def test_loop_batch_mode_success_deletes_ok_and_stops_extenders(monkeypatch):
     fake_msgs = [
         make_raw_message(mid="m1", rh="rh1"),
@@ -286,10 +292,12 @@ def test_loop_batch_mode_success_deletes_ok_and_stops_extenders(monkeypatch):
     monkeypatch.setattr(core.boto3, "client", lambda *a, **kw: fake_sqs)
 
     created_exts = []
+
     def _fake_ext_factory(*args, **kwargs):
         ext = FakeVisibilityExt(*args, **kwargs)
         created_exts.append(ext)
         return ext
+
     monkeypatch.setattr(core, "VisibilityExtender", _fake_ext_factory)
 
     def handler(batch):
@@ -320,8 +328,7 @@ def test_loop_batch_mode_all_success_deletes_all(monkeypatch):
     ]
     fake_sqs = FakeSQS(batches=[fake_msgs])
     monkeypatch.setattr(core.boto3, "client", lambda *a, **kw: fake_sqs)
-    monkeypatch.setattr(core, "VisibilityExtender",
-                        lambda *a, **k: FakeVisibilityExt(*a, **k))
+    monkeypatch.setattr(core, "VisibilityExtender", lambda *a, **k: FakeVisibilityExt(*a, **k))
 
     def handler(batch):
         nonlocal_eng.stop_event.set()
@@ -342,10 +349,10 @@ def test_loop_batch_mode_handler_exception_deletes_nothing(monkeypatch):
     fake_msgs = [make_raw_message(mid="m1", rh="rh1")]
     fake_sqs = FakeSQS(batches=[fake_msgs])
     monkeypatch.setattr(core.boto3, "client", lambda *a, **kw: fake_sqs)
-    monkeypatch.setattr(core, "VisibilityExtender",
-                        lambda *a, **k: FakeVisibilityExt(*a, **k))
+    monkeypatch.setattr(core, "VisibilityExtender", lambda *a, **k: FakeVisibilityExt(*a, **k))
 
     call_count = [0]
+
     def handler(batch):
         call_count[0] += 1
         nonlocal_eng.stop_event.set()
@@ -372,8 +379,11 @@ def test_loop_per_message_mode_deletes_only_truthy_and_handles_exceptions(monkey
     monkeypatch.setattr(core.boto3, "client", lambda *a, **kw: fake_sqs)
 
     created_exts = []
-    monkeypatch.setattr(core, "VisibilityExtender",
-                        lambda *a, **k: created_exts.append(FakeVisibilityExt(*a, **k)) or created_exts[-1])
+    monkeypatch.setattr(
+        core,
+        "VisibilityExtender",
+        lambda *a, **k: created_exts.append(FakeVisibilityExt(*a, **k)) or created_exts[-1],
+    )
 
     def handler(msg):
         if msg.receipt_handle == "rh1":

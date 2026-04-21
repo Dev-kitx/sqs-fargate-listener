@@ -4,9 +4,10 @@
 # -------------------------------------------------------------------
 
 import pytest
+
 import src.sqs_fargate_listener.decorator as dec
 
-Q  = "http://localhost:4566/000000000000/q"
+Q = "http://localhost:4566/000000000000/q"
 Q1 = "http://localhost:4566/000000000000/q1"
 Q2 = "http://localhost:4566/000000000000/q2"
 
@@ -14,6 +15,7 @@ Q2 = "http://localhost:4566/000000000000/q2"
 # ---------------------------
 # Fixtures
 # ---------------------------
+
 
 @pytest.fixture(autouse=True)
 def clean_registry():
@@ -47,10 +49,12 @@ def fake_engine_cls(monkeypatch):
 # Tests: decorator basics
 # ---------------------------
 
+
 def test_decorator_raises_when_no_queue_url_and_no_env(monkeypatch):
     monkeypatch.delenv("QUEUE_URL", raising=False)
 
     with pytest.raises(ValueError, match="queue_url is required"):
+
         @dec.sqs_listener()
         def h(_): ...
 
@@ -83,7 +87,9 @@ def test_decorator_allows_explicit_queue_url_over_env(monkeypatch):
 def test_decorator_returns_original_function(monkeypatch):
     monkeypatch.setenv("QUEUE_URL", Q)
 
-    def f(_): return "ok"
+    def f(_):
+        return "ok"
+
     wrapped = dec.sqs_listener()(f)
     assert wrapped is f
     assert wrapped("x") == "ok"
@@ -110,6 +116,7 @@ def test_multiple_decorators_register_multiple_listeners(monkeypatch):
 # ---------------------------
 # Tests: option propagation
 # ---------------------------
+
 
 def test_options_propagate_and_none_are_dropped(monkeypatch, fake_engine_cls):
     monkeypatch.setenv("QUEUE_URL", Q)
@@ -148,6 +155,7 @@ def test_options_propagate_and_none_are_dropped(monkeypatch, fake_engine_cls):
 # ---------------------------
 # Tests: run_listeners behavior
 # ---------------------------
+
 
 def test_run_listeners_raises_when_empty_registry():
     with pytest.raises(RuntimeError, match="No listeners registered"):

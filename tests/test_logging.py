@@ -9,7 +9,6 @@
 
 import json
 import logging
-import pytest
 
 from src.sqs_fargate_listener.logging_setup import JsonFormatter, get_logger
 
@@ -25,10 +24,16 @@ def _reset_logger(name: str) -> logging.Logger:
 # JsonFormatter
 # ---------------------------
 
+
 def _make_record(msg="hello", level=logging.INFO, name="test", extra=None):
     record = logging.LogRecord(
-        name=name, level=level, pathname="f.py", lineno=10,
-        msg=msg, args=(), exc_info=None,
+        name=name,
+        level=level,
+        pathname="f.py",
+        lineno=10,
+        msg=msg,
+        args=(),
+        exc_info=None,
     )
     if extra:
         for k, v in extra.items():
@@ -81,11 +86,17 @@ def test_json_formatter_includes_exception():
         raise ValueError("something broke")
     except ValueError:
         import sys
+
         exc_info = sys.exc_info()
 
     record = logging.LogRecord(
-        name="test", level=logging.ERROR, pathname="f.py", lineno=1,
-        msg="err", args=(), exc_info=exc_info,
+        name="test",
+        level=logging.ERROR,
+        pathname="f.py",
+        lineno=1,
+        msg="err",
+        args=(),
+        exc_info=exc_info,
     )
     parsed = json.loads(formatter.format(record))
     assert "exception" in parsed
@@ -115,6 +126,7 @@ def test_json_formatter_handles_non_string_extra():
 # get_logger
 # ---------------------------
 
+
 def test_get_logger_returns_logger():
     _reset_logger("sqs_test_basic")
     logger = get_logger("sqs_test_basic")
@@ -135,7 +147,9 @@ def test_get_logger_respects_log_level(monkeypatch):
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
     # Force re-read of module-level default
     import importlib
+
     import src.sqs_fargate_listener.logging_setup as ls
+
     importlib.reload(ls)
 
     logger = ls.get_logger("sqs_test_level")
@@ -148,6 +162,7 @@ def test_get_logger_respects_log_level(monkeypatch):
 
 def test_get_logger_json_mode_uses_json_formatter(monkeypatch):
     import importlib
+
     import src.sqs_fargate_listener.logging_setup as ls
 
     monkeypatch.setenv("LOG_JSON", "1")
@@ -167,6 +182,7 @@ def test_get_logger_json_mode_uses_json_formatter(monkeypatch):
 
 def test_get_logger_json_output_is_parseable(monkeypatch, capsys):
     import importlib
+
     import src.sqs_fargate_listener.logging_setup as ls
 
     monkeypatch.setenv("LOG_JSON", "1")
