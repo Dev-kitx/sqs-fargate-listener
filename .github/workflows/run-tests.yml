@@ -15,6 +15,11 @@ on:
       - '.github/badges/**'
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - 'README.md'
+      - 'codecov.yml'
+      - 'CHANGELOG.md'
+      - '.github/badges/**'
   workflow_dispatch:
 
 jobs:
