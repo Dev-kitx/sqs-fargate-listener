@@ -1,0 +1,40 @@
+name: Create GitHub Release
+
+# Watches commits pushed to main.
+# Maintains a "Release PR" that bumps the version in package.json
+# and auto-generates a CHANGELOG from conventional commit messages.
+#
+# When you merge the Release PR:
+#   - smart-gh-release creates the git tag and GitHub Release
+#   - That "release published" event triggers publish.yml automatically
+#
+# CONVENTIONAL COMMITS (determines version bump)
+# ───────────────────────────────────────────────
+#   feat: ...          → minor bump  (0.1.0 → 0.2.0)
+#   fix: ...           → patch bump  (0.1.0 → 0.1.1)
+#   feat!: ...         → major bump  (0.1.0 → 1.0.0)
+#   BREAKING CHANGE:   → major bump
+#   chore/docs/style   → no release PR update
+#
+# SETUP REQUIRED (one-time)
+# ──────────────────────────
+# Create a GitHub App and add to repo:
+#   vars.APP_ID      — the app's numeric ID
+#   secrets.PRIVATE_KEY — the app's private key (PEM)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'codecov.yml'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    name: Create Release PR
+    uses: Dev-kitx/.github/.github/workflows/github-release.yml@main
+    secrets: inherit

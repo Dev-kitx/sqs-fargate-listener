@@ -7,12 +7,13 @@
 # -----------------------------------------------------------
 
 import json
+
 import pytest
 
-from src.sqs_fargate_listener.types import SqsMessage, BatchResult
-
+from src.sqs_fargate_listener.types import BatchResult, SqsMessage
 
 # ---------- Helpers ----------
+
 
 def make_msg(
     *,
@@ -32,6 +33,7 @@ def make_msg(
 
 
 # ---------- Tests: json (cached_property) ----------
+
 
 def test_json_parses_valid_body():
     msg = make_msg(body='{"hello": "world", "x": 42}')
@@ -58,6 +60,7 @@ def test_json_is_cached_even_if_body_changes_after_first_access():
 
 # ---------- Tests: try_json (never raises) ----------
 
+
 def test_try_json_returns_data_and_none_error_on_valid_body():
     msg = make_msg(body='{"a": 1}')
     data, err = msg.try_json()
@@ -75,6 +78,7 @@ def test_try_json_returns_none_and_error_on_invalid_body():
 
 
 # ---------- Tests: message_attributes() mapping ----------
+
 
 def test_message_attributes_empty_when_missing():
     msg = make_msg(message_attributes=None)
@@ -94,11 +98,7 @@ def test_message_attributes_string_value():
 
 def test_message_attributes_binary_value_passes_bytes_through():
     binary = b"\x00\x01\x02"
-    msg = make_msg(
-        message_attributes={
-            "Blob": {"DataType": "Binary", "BinaryValue": binary}
-        }
-    )
+    msg = make_msg(message_attributes={"Blob": {"DataType": "Binary", "BinaryValue": binary}})
     attrs = msg.message_attributes()
     assert attrs["Blob"] == binary
     assert isinstance(attrs["Blob"], (bytes, bytearray))
@@ -113,6 +113,7 @@ def test_message_attributes_unknown_structure_falls_back_to_raw():
 
 # ---------- Tests: BatchResult ----------
 
+
 def test_batch_result_holds_failed_receipt_handles():
     br = BatchResult(failed_receipt_handles=["rh1", "rh2"])
     assert br.failed_receipt_handles == ["rh1", "rh2"]
@@ -120,6 +121,7 @@ def test_batch_result_holds_failed_receipt_handles():
 
 
 # ---------- Parametrized edge cases ----------
+
 
 @pytest.mark.parametrize(
     "body,expected",

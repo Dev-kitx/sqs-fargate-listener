@@ -1,0 +1,26 @@
+name: Run tests and report coverage
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+      - develop
+      - 'feature/**'
+      - 'releases/**'
+    paths-ignore:
+      - 'README.md'
+      - 'codecov.yml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: Dev-Kitx/.github/.github/workflows/python-tests.yml@main
+    secrets: inherit
+    with:
+      python-versions: '["3.11", "3.12", "3.13"]'
+      coverage-python-version: "3.12"
+      codecov_slug: "Dev-Kitx/sqs-fargate-listener"
