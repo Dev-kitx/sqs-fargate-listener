@@ -19,9 +19,8 @@ on:
 jobs:
   ci:
     uses: Dev-Kitx/.github/.github/workflows/python-tests.yml@main
+    secrets: inherit
     with:
       python-versions: '["3.11", "3.12", "3.13"]'
       coverage-python-version: "3.12"
       codecov_slug: "Dev-Kitx/sqs-fargate-listener"
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
